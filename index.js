@@ -27,8 +27,9 @@ function pushToGit() {
 	return new Promise((resolve, reject) => {
 		const current = currentDB.get('propertyList').value();
 		const sold = soldDB.get('propertyList').value();
-		currentStringified = JSON.stringify(current);
-		soldStringified = JSON.stringify(sold);
+
+		currentStringified = JSON.stringify(current, null, 2);
+		soldStringified = JSON.stringify(sold, null, 2);
 
 		fs.writeFile(path.join(config.gitPath, 'current'), currentStringified, (err) => {
 			if (err) return reject(err);
