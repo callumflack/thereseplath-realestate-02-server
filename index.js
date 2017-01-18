@@ -77,7 +77,11 @@ function moveToHistory(file) {
 
 function updateDB(jsonData) {
 	return new Promise((resolve, reject) => {
-		let properties = jsonData.propertyList.residential;
+		let properties = jsonData.propertyList.residential || [];
+
+		properties = properties.filter((property) => {
+			return property.listingAgent[0].name[0] === 'Therese Plath';
+		});
 
 		if (!properties) {
 			return resolve();
@@ -191,7 +195,7 @@ function main() {
 
 		processFiles(files)
 		.then((value) => {
-			//pushToGit();
+			pushToGit();
 		});
 	});
 }
