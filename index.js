@@ -2,7 +2,7 @@ const fs = require('fs');
 const config = require('./config/config');
 const path = require('path');
 const parseString = require('xml2js').parseString;
-const simpleGit = require('simple-git')(config.gitPath);
+const simpleGit = require('simple-git')(config.jsonPath);
 
 const low = require('lowdb');
 const currentDB = low('db/current.json');
@@ -20,21 +20,38 @@ soldDB.defaults({
 
 
 /**
+ * Strip surrounding array from the value of uniqueID on each property
+ *
+ * @param {Array} properties
+ * @return {Array}
+ */
+
+function stripArrayFromUniqueID(properties) {
+	return properties.map((property) => {
+		property.uniqueID = property.uniqueID[0];
+		return property;
+	});
+}
+
+/**
  * Commit & push JSON to github jekyll repo
  */
 
 function pushToGit() {
 	return new Promise((resolve, reject) => {
-		const current = currentDB.get('propertyList').value();
-		const sold = soldDB.get('propertyList').value();
+		let current = currentDB.get('propertyList').value();
+		let sold = soldDB.get('propertyList').value();
+
+		current = stripArrayFromUniqueID(current);
+		sold = stripArrayFromUniqueID(sold);
 
 		currentStringified = JSON.stringify(current, null, 2);
 		soldStringified = JSON.stringify(sold, null, 2);
 
-		fs.writeFile(path.join(config.gitPath, 'current'), currentStringified, (err) => {
+		fs.writeFile(path.join(config.jsonPath, 'current'), currentStringified, (err) => {
 			if (err) return reject(err);
 
-			fs.writeFile(path.join(config.gitPath, 'sold'), soldStringified, (err) => {
+			fs.writeFile(path.join(config.jsonPath, 'sold'), soldStringified, (err) => {
 				if (err) return reject(err);
 
 				simpleGit

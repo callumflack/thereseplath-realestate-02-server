@@ -4,7 +4,7 @@ const config = {
 	// Path of converted xml files
 	historyPath: 'history',
 	// Path of github repository to push generated JSON
-	gitPath: '../git_repo',
+	jsonPath: '../git_repo',
 }
 
 module.exports = config;
