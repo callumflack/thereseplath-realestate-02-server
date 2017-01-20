@@ -21,6 +21,7 @@ soldDB.defaults({
 
 /**
  * Strip surrounding array from the value of uniqueID on each property
+ * so that we can use uniqueID in Jekyll config.
  *
  * @param {Array} properties
  * @return {Array}
