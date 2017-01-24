@@ -20,7 +20,8 @@ soldDB.defaults({
 
 
 /**
- * Strip surrounding array from the value of uniqueID on each property
+ * Strip surrounding array from the value of uniqueID on each property,
+ * then lowercase the string, so we can use uniqueID in Jekyll config.
  *
  * @param {Array} properties
  * @return {Array}
@@ -28,7 +29,7 @@ soldDB.defaults({
 
 function stripArrayFromUniqueID(properties) {
 	return properties.map((property) => {
-		property.uniqueID = property.uniqueID[0];
+		property.uniqueID = property.uniqueID[0].toLowerCase();
 		return property;
 	});
 }
