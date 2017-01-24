@@ -48,10 +48,10 @@ function pushToGit() {
 		currentStringified = JSON.stringify(current, null, 2);
 		soldStringified = JSON.stringify(sold, null, 2);
 
-		fs.writeFile(path.join(config.jsonPath, 'current'), currentStringified, (err) => {
+		fs.writeFile(path.join(config.jsonPath, 'current.json'), currentStringified, (err) => {
 			if (err) return reject(err);
 
-			fs.writeFile(path.join(config.jsonPath, 'sold'), soldStringified, (err) => {
+			fs.writeFile(path.join(config.jsonPath, 'sold.json'), soldStringified, (err) => {
 				if (err) return reject(err);
 
 				simpleGit
