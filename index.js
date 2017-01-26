@@ -29,7 +29,7 @@ soldDB.defaults({
 
 function stripArrayFromUniqueID(properties) {
 	return properties.map((property) => {
-		property.uniqueID = property.uniqueID[0].toLowerCase();
+		property.uniqueID = property.uniqueID[0];
 		return property;
 	});
 }
