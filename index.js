@@ -20,6 +20,27 @@ soldDB.defaults({
 
 
 /**
+ * Log time stamped text to stdout
+ *
+ * @param {String|Error} text
+ */
+
+function logByDate(text) {
+	console.log(new Date().toUTCString() + '\n' + text + '\n');
+}
+
+/**
+ * General use error handler
+ *
+ * @param {Error} err
+ */
+
+function errorHandler(err) {
+	logByDate(err);
+	throw err;
+}
+
+/**
  * Strip surrounding array from the value of uniqueID on each property,
  * then lowercase the string, so we can use uniqueID in Jekyll config.
  *
@@ -40,35 +61,38 @@ function stripArrayFromUniqueID(properties) {
 
 function pushToGit() {
 	return new Promise((resolve, reject) => {
-		let current = currentDB.get('propertyList').value();
-		let sold = soldDB.get('propertyList').value();
+		simpleGit
+		.pull()
+		.then((values) => {
+			let current = currentDB.get('propertyList').value();
+			let sold = soldDB.get('propertyList').value();
 
-		current = stripArrayFromUniqueID(current);
-		sold = stripArrayFromUniqueID(sold);
+			current = stripArrayFromUniqueID(current);
+			sold = stripArrayFromUniqueID(sold);
 
-		currentStringified = JSON.stringify(current, null, 2);
-		soldStringified = JSON.stringify(sold, null, 2);
+			currentStringified = JSON.stringify(current, null, 2);
+			soldStringified = JSON.stringify(sold, null, 2);
 
-		fs.writeFile(path.join(config.jsonPath, 'current.json'), currentStringified, (err) => {
-			if (err) return reject(err);
-
-			fs.writeFile(path.join(config.jsonPath, 'sold.json'), soldStringified, (err) => {
+			fs.writeFile(path.join(config.jsonPath, 'current.json'), currentStringified, (err) => {
 				if (err) return reject(err);
 
-				simpleGit
-				.pull()
-				.add('*')
-				.commit('JSON data - ' + new Date().toUTCString())
-				.push()
-				.then((err, update) => {
-					if (err) {
-						return reject(err);
-					}
+				fs.writeFile(path.join(config.jsonPath, 'sold.json'), soldStringified, (err) => {
+					if (err) return reject(err);
 
-					resolve();
+					simpleGit
+					.add('*')
+					.commit('JSON data - ' + new Date().toUTCString())
+					.push()
+					.then((err, update) => {
+						if (err) {
+							return reject(err);
+						}
+
+						resolve();
+					}, errorHandler)
 				});
 			});
-		});
+		}, errorHandler);
 	});
 }
 
@@ -207,6 +231,7 @@ function processFiles(files) {
 function main() {
 	fs.readdir(config.xmlPath, (err, files) => {
 		if (!files.length) {
+			logByDate('No files to be processed');
 			return;
 		}
 
@@ -214,8 +239,11 @@ function main() {
 
 		processFiles(files)
 		.then((value) => {
-			pushToGit();
-		});
+			return pushToGit();
+		})
+		.then(() => {
+			logByDate('Updates successully pushed.');
+		}, errorHandler);
 	});
 }
 
