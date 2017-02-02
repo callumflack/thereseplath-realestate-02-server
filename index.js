@@ -50,7 +50,7 @@ function errorHandler(err) {
 
 function stripArrayFromUniqueID(properties) {
 	return properties.map((property) => {
-		property.uniqueID = property.uniqueID[0];
+		property.uniqueID = property.uniqueID[0].toLowerCase();
 		return property;
 	});
 }
