@@ -3,6 +3,7 @@ const config = require('./config/config');
 const path = require('path');
 const parseString = require('xml2js').parseString;
 const simpleGit = require('simple-git')(config.jsonPath);
+const https = require('https');
 
 const low = require('lowdb');
 const currentDB = low('db/current.json');
@@ -56,6 +57,33 @@ function stripArrayFromUniqueID(properties) {
 }
 
 /**
+ * Publish new version of site leaf website
+ */
+
+function siteLeafPublish() {
+	return new Promise((resolve, reject) => {
+		let request_options = {
+			host: 'api.siteleaf.com',
+			path: `/v2/sites/${config.siteLeaf.siteId}/publish`,
+			method: 'POST',
+			auth: `${config.siteLeaf.apiKey}:${config.siteLeaf.apiSecret}`,
+		};
+
+		let request = https.request(request_options, (res) => {
+			res.setEncoding('utf-8');
+			res.on('data', (chunk) => {
+				resolve();
+			});
+		});
+
+		request.on('error', errorHandler);
+
+		request.write(JSON.stringify({}));
+		request.end();
+	});
+}
+
+/**
  * Commit & push JSON to github jekyll repo
  */
 
@@ -89,7 +117,7 @@ function pushToGit() {
 						}
 
 						resolve();
-					}, errorHandler)
+					}, errorHandler);
 				});
 			});
 		}, errorHandler);
@@ -215,21 +243,23 @@ function processFiles(files) {
 
 		xmlFileToJson(file)
 		.then(updateDB)
-		.then((value) => {
-			moveToHistory(file)
-			.then(() => {
-				if (files.length) {
-					processFiles(files).then(resolve);
-				} else {
-					resolve();
-				}
-			});
+		.then(moveToHistory.bind(null, file))
+		.then(() => {
+			if (files.length) {
+				processFiles(files).then(resolve);
+			} else {
+				resolve();
+			}
 		});
 	});
 }
 
 function main() {
 	fs.readdir(config.xmlPath, (err, files) => {
+		if (err) {
+			errorHandler(err);
+		}
+
 		if (!files.length) {
 			logByDate('No files to be processed');
 			return;
@@ -238,9 +268,8 @@ function main() {
 		files = files.sort();
 
 		processFiles(files)
-		.then((value) => {
-			return pushToGit();
-		})
+		.then(pushToGit)
+		.then(siteLeafPublish)
 		.then(() => {
 			logByDate('Updates successully pushed.');
 		}, errorHandler);
