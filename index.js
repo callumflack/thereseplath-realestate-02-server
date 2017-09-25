@@ -130,13 +130,11 @@ function pushToGit() {
  * @param {String} file
  */
 
-function moveToHistory(file) {
-	return new Promise((resolve, reject) => {
-		fs.rename(path.join(config.xmlPath, file), path.join(config.historyPath, file), (err) => {
-			if (err) return reject(err);
+async function moveToHistory(file) {
+	fs.rename(path.join(config.xmlPath, file), path.join(config.historyPath, file), (err) => {
+		if (err) throw err;
 
-			resolve();
-		});
+		return;
 	});
 }
 
@@ -146,78 +144,61 @@ function moveToHistory(file) {
  * @param {Object} jsonData
  */
 
-function updateDB(jsonData) {
-	return new Promise((resolve, reject) => {
-		let properties = jsonData.propertyList.residential || [];
+async function updateDB(jsonData) {
+	let properties = jsonData.propertyList.residential || [];
 
-		properties = properties.filter((property) => {
-			return property.listingAgent[0].name[0] === 'Therese Plath';
-		});
+	properties = properties.filter((property) => {
+		return property.listingAgent[0].name[0] === 'Therese Plath';
+	});
 
-		if (!properties) {
-			return resolve();
+	if (!properties) {
+		return;
+	}
+
+	properties.forEach((property) => {
+		let propertySold = property.$.status === 'sold';
+		let propertyRemoved = !propertySold && property.$.status !== 'current';
+		let inCurrentDB = currentDB.get('propertyList')
+		.find({ uniqueID: property.uniqueID })
+		.value();
+
+		// All properties already in the 'current' db will either be updated with
+		// new data, moved to 'sold' db or removed entirely
+		if (inCurrentDB) {
+			currentDB.get('propertyList')
+			.remove({ uniqueID: property.uniqueID })
+			.value();
 		}
 
-		properties.forEach((property) => {
-			let propertySold = property.$.status === 'sold';
-			let propertyRemoved = !propertySold && property.$.status !== 'current';
-			let inCurrentDB = currentDB.get('propertyList')
-			.find({ uniqueID: property.uniqueID })
-			.value();
+		if (propertyRemoved) {
+			return;
+		}
 
-			// All properties already in the 'current' db will either be updated with
-			// new data, moved to 'sold' db or removed entirely
-			if (inCurrentDB) {
-				currentDB.get('propertyList')
-				.remove({ uniqueID: property.uniqueID })
-				.value();
-			}
-
-			if (propertyRemoved) {
-				return;
-			}
-
-			if (propertySold) {
-				soldDB.get('propertyList')
-				.push(property)
-				.value();
-
-				const soldListingsLimit = 3;
-				let soldDBListingCount = soldDB.get('propertyList')
-				.value().length;
-
-				if (soldDBListingCount > soldListingsLimit) {
-					let oldestSoldListing = soldDB.get('propertyList')
-					.sortBy('$.modTime')
-					.take(1)
-					.value()[0];
-
-					soldDB.get('propertyList')
-					.remove({ uniqueID: oldestSoldListing.uniqueID })
-					.value();
-				}
-
-				return;
-			}
-
-			currentDB.get('propertyList')
+		if (propertySold) {
+			soldDB.get('propertyList')
 			.push(property)
 			.value();
-		});
 
-		resolve();
+			return;
+		}
+
+		currentDB.get('propertyList')
+		.push(property)
+		.value();
 	});
+
+	return;
 }
 
 /**
- * Convert contentx of XML file to JSON
+ * Convert content of XML file to JSON
  *
  * @param {String} file
- * @return {Promise[Object]}
+ * @return {Object}
  */
 
-function xmlFileToJson(file) {
-	return new Promise((resolve, reject) => {
+async function xmlFileToJson(file) {
+	return await new Promise((resolve, reject) => {
 		fs.readFile(path.join(config.xmlPath, file), 'utf-8', (err, xmlData) => {
 			if (err) return reject(err);
 
@@ -237,21 +218,12 @@ function xmlFileToJson(file) {
  * @param {Array[String]} files
  */
 
-function processFiles(files) {
-	return new Promise((resolve, reject) => {
-		let file = files.shift();
-
-		xmlFileToJson(file)
-		.then(updateDB)
-		.then(moveToHistory.bind(null, file))
-		.then(() => {
-			if (files.length) {
-				processFiles(files).then(resolve);
-			} else {
-				resolve();
-			}
-		});
-	});
+async function processFiles(files) {
+	for (const file of files) {
+		const json = await xmlFileToJson(file);
+		await updateDB(json);
+		await moveToHistory(file);
+	}
 }
 
 function main() {
